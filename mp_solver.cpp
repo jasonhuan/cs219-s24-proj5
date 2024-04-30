@@ -8,116 +8,116 @@
 #include <gsl/gsl_blas.h>
 #include <gsl/gsl_multifit_nlinear.h>
 #include <immintrin.h>
-#include "srsran/phy/ch_estimation/mp_solver.h"
+#include "./mp_solver.h"
 
 #define MAX_ITER 20
-
+using namespace std;
 extern __m128d _ZGVbN2v_sin(__m128d);
 extern __m128d _ZGVbN2v_cos(__m128d);
 extern void _ZGVbN2vvv_sincos(__m128d, __m128d, __m128d);
 
-// static int
-// channel_eq_func(const gsl_vector * x, void *data,
-//         gsl_vector * f)
-// {
-//   mp_config_t *mp_config = (mp_config_t *)data;
-
-//   double tau[MAX_NOF_PATHS];
-//   double nu[MAX_NOF_PATHS];
-//   complex double h[MAX_NOF_PATHS];
-
-//   for (int p = 0; p < mp_config->nof_paths; ++p) {
-//     tau[p] = gsl_vector_get(x, p);
-//     nu[p] = gsl_vector_get(x, mp_config->nof_paths+p);
-//     h[p] = gsl_vector_get(x, 2*mp_config->nof_paths+p) + gsl_vector_get(x, 3*mp_config->nof_paths+p)*I;
-//   }
-  
-//   for (int k = 0; k < mp_config->nof_pilots; ++k)
-//   {
-//     complex double Yk = 0;
-//     for (int p = 0; p < mp_config->nof_paths; ++p) {
-//       Yk += h[p] * cexp(-I*2*M_PI*(tau[p] * (mp_config->m[k] + 0.5) - nu[p] * (mp_config->n[k] + 0.5)));
-//     }
-//     gsl_vector_set(f, k, cabs(Yk - mp_config->y[k]));
-//   }
-
-//   return GSL_SUCCESS;
-// }
-
 static int
-channel_eq_func_opt(const gsl_vector * x, void *data,
+channel_eq_func(const gsl_vector * x, void *data,
         gsl_vector * f)
 {
   mp_config_t *mp_config = (mp_config_t *)data;
 
   double tau[MAX_NOF_PATHS];
   double nu[MAX_NOF_PATHS];
-  double h_r[MAX_NOF_PATHS];
-  double h_i[MAX_NOF_PATHS];
+  _Complex double h[MAX_NOF_PATHS];
 
   for (int p = 0; p < mp_config->nof_paths; ++p) {
     tau[p] = gsl_vector_get(x, p);
     nu[p] = gsl_vector_get(x, mp_config->nof_paths+p);
-    h_r[p] = gsl_vector_get(x, 2*mp_config->nof_paths+p);
-    h_i[p] = gsl_vector_get(x, 3*mp_config->nof_paths+p);
+    h[p] = gsl_vector_get(x, 2*mp_config->nof_paths+p) + gsl_vector_get(x, 3*mp_config->nof_paths+p)*I;
   }
-  
-  double tbuf[2] __attribute__ ((aligned (16)));
 
-/*
-  __m128d vh_r = __mm_load_pd(h_r);
-  __m128d vh_i = __mm_load_pd(h_i);
-  __m128d vnu = __mm_load_pd(nu);
-  __m128d vtau = __mm_load_pd(tau);
-*/
-
-  for (int k = 0; k < mp_config->nof_pilots; k++)
+  for (int k = 0; k < mp_config->nof_pilots; ++k)
   {
-    __m128d vm = _mm_set_pd1(-(mp_config->m[k] + 0.5) * 2 * M_PI);
-    __m128d vn = _mm_set_pd1(-(mp_config->n[k] + 0.5) * 2 * M_PI);
-
-    for (int p = 0; p < mp_config->nof_paths; p += 2)
-    {
-      __m128d vtau = _mm_load_pd(&tau[p]);
-      __m128d vnu = _mm_load_pd(&nu[p]);
-
-      __m128d v1 = _mm_mul_pd(vm, vtau);
-      __m128d v2 = _mm_mul_pd(vn, vnu);
-
-      __m128d vangle = _mm_sub_pd(v1, v2);
-
-#ifdef USE_SINCOS
-      // DOES NOT WORK`
-      __m128d vreal_mem;
-      __m128d vimag_mem;
-      _ZGVbN2vvv_sincos(vangle, vimag_mem, vreal_mem);
-      __m128d vreal = _mm_load_pd((double *)&vreal_mem);
-      __m128d vimag = _mm_load_pd((double *)&vimag_mem);
-#else
-      __m128d vreal = _ZGVbN2v_cos(vangle);
-      __m128d vimag = _ZGVbN2v_sin(vangle);
-#endif
-
-      __m128d vh_r = _mm_load_pd(&h_r[p]);
-      __m128d vh_i = _mm_load_pd(&h_i[p]);
-
-      __m128d vYk_r = _mm_sub_pd(_mm_mul_pd(vreal, vh_r), _mm_mul_pd(vimag, vh_i));
-      __m128d vYk_i = _mm_add_pd(_mm_mul_pd(vreal, vh_i), _mm_mul_pd(vimag, vh_r));
-      __m128d vYk = _mm_hadd_pd(vYk_r, vYk_i); // Real at [63:0], imag at [127:64]
-
-      __m128d vy = _mm_set_pd(cimag(mp_config->y[k]), creal(mp_config->y[k]));
-
-      __m128d vdiff = _mm_sub_pd(vy, vYk);
-      __m128d vsq = _mm_mul_pd(vdiff, vdiff);
-
-      __m128d vres = _mm_hadd_pd(vsq, vsq);
-      _mm_store_pd(tbuf, vres);
-      gsl_vector_set(f, k, sqrt(tbuf[0]));
+    _Complex double Yk = 0;
+    for (int p = 0; p < mp_config->nof_paths; ++p) {
+      Yk += h[p] * cexp(-I*2*M_PI*(tau[p] * (mp_config->m[k] + 0.5) - nu[p] * (mp_config->n[k] + 0.5)));
     }
+    gsl_vector_set(f, k, cabs(Yk - mp_config->y[k]));
   }
 
   return GSL_SUCCESS;
 }
+
+//static int
+//channel_eq_func_opt(const gsl_vector * x, void *data,
+//        gsl_vector * f)
+//{
+//  mp_config_t *mp_config = (mp_config_t *)data;
+//
+//  double tau[MAX_NOF_PATHS];
+//  double nu[MAX_NOF_PATHS];
+//  double h_r[MAX_NOF_PATHS];
+//  double h_i[MAX_NOF_PATHS];
+//
+//  for (int p = 0; p < mp_config->nof_paths; ++p) {
+//    tau[p] = gsl_vector_get(x, p);
+//    nu[p] = gsl_vector_get(x, mp_config->nof_paths+p);
+//    h_r[p] = gsl_vector_get(x, 2*mp_config->nof_paths+p);
+//    h_i[p] = gsl_vector_get(x, 3*mp_config->nof_paths+p);
+//  }
+//  
+//  double tbuf[2] __attribute__ ((aligned (16)));
+//
+///*
+//  __m128d vh_r = __mm_load_pd(h_r);
+//  __m128d vh_i = __mm_load_pd(h_i);
+//  __m128d vnu = __mm_load_pd(nu);
+//  __m128d vtau = __mm_load_pd(tau);
+//*/
+//
+//  for (int k = 0; k < mp_config->nof_pilots; k++)
+//  {
+//    __m128d vm = _mm_set_pd1(-(mp_config->m[k] + 0.5) * 2 * M_PI);
+//    __m128d vn = _mm_set_pd1(-(mp_config->n[k] + 0.5) * 2 * M_PI);
+//
+//    for (int p = 0; p < mp_config->nof_paths; p += 2)
+//    {
+//      __m128d vtau = _mm_load_pd(&tau[p]);
+//      __m128d vnu = _mm_load_pd(&nu[p]);
+//
+//      __m128d v1 = _mm_mul_pd(vm, vtau);
+//      __m128d v2 = _mm_mul_pd(vn, vnu);
+//
+//      __m128d vangle = _mm_sub_pd(v1, v2);
+//
+//#ifdef USE_SINCOS
+//      // DOES NOT WORK`
+//      __m128d vreal_mem;
+//      __m128d vimag_mem;
+//      _ZGVbN2vvv_sincos(vangle, vimag_mem, vreal_mem);
+//      __m128d vreal = _mm_load_pd((double *)&vreal_mem);
+//      __m128d vimag = _mm_load_pd((double *)&vimag_mem);
+//#else
+//      __m128d vreal = _ZGVbN2v_cos(vangle);
+//      __m128d vimag = _ZGVbN2v_sin(vangle);
+//#endif
+//
+//      __m128d vh_r = _mm_load_pd(&h_r[p]);
+//      __m128d vh_i = _mm_load_pd(&h_i[p]);
+//
+//      __m128d vYk_r = _mm_sub_pd(_mm_mul_pd(vreal, vh_r), _mm_mul_pd(vimag, vh_i));
+//      __m128d vYk_i = _mm_add_pd(_mm_mul_pd(vreal, vh_i), _mm_mul_pd(vimag, vh_r));
+//      __m128d vYk = _mm_hadd_pd(vYk_r, vYk_i); // Real at [63:0], imag at [127:64]
+//
+//      __m128d vy = _mm_set_pd(cimag(mp_config->y[k]), creal(mp_config->y[k]));
+//
+//      __m128d vdiff = _mm_sub_pd(vy, vYk);
+//      __m128d vsq = _mm_mul_pd(vdiff, vdiff);
+//
+//      __m128d vres = _mm_hadd_pd(vsq, vsq);
+//      _mm_store_pd(tbuf, vres);
+//      gsl_vector_set(f, k, sqrt(tbuf[0]));
+//    }
+//  }
+//
+//  return GSL_SUCCESS;
+//}
 
 int mp_solver(mp_config_t *mp_config, mp_profile_t *mp_profile)
 {
@@ -145,7 +145,7 @@ int mp_solver(mp_config_t *mp_config, mp_profile_t *mp_profile)
   const double ftol = 0.0;
 
   /* define the function to be minimized */
-  fdf.f = channel_eq_func_opt;
+  fdf.f = channel_eq_func; //changed
   fdf.df = NULL;   /* set to NULL for finite-difference Jacobian */
   fdf.fvv = NULL;     /* not using geodesic acceleration */
   fdf.n = mp_config->nof_pilots;

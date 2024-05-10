@@ -10,6 +10,15 @@
 #include <immintrin.h>
 #include "./mp_solver.h"
 
+#include <iostream>
+
+#include <fstream>
+#include <string>
+#include <vector>
+#include <sstream>
+#include <complex>
+
+
 #define MAX_ITER 20
 using namespace std;
 extern __m128d _ZGVbN2v_sin(__m128d);
@@ -184,8 +193,71 @@ int mp_solver(mp_config_t *mp_config, mp_profile_t *mp_profile)
 
 int main() {
     // read input
-    mp_config_t mp_config;
-    mp_profile_t mp_profile;
-    mp_config.nof_pilots = 32;
-    mp_config.nof_paths = 3;
+    // mp_config_t mp_config;
+    // mp_profile_t mp_profile;
+    // mp_config.nof_pilots = 32;
+    // mp_config.nof_paths = 3;
+
+
+    std::ifstream file("sample_input.csv");
+    if (!file.is_open()) {
+      std::cout << "Failed to open the file." << std::endl;
+      return 1; // Exit the program
+    }
+
+    std::string line;
+    std::vector<std::vector<std::string>> data;
+
+    while (std::getline(file, line)) {
+        std::stringstream ss(line);
+        std::vector<std::string> row;
+        std::string cell;
+
+        while (std::getline(ss, cell, ',')) {
+            row.push_back(cell);
+        }
+
+        data.push_back(row);
+    }
+
+    // Print the imported data
+    // for (const auto& row : data) {
+    //     for (const auto& cell : row) {
+    //         std::cout << cell << " ";
+    //     }
+    //     std::cout << std::endl;
+    // }
+
+    for (const auto& row : data) {
+      mp_config_t mp_config;
+      mp_profile_t mp_profile;
+      mp_config.nof_pilots = 32;
+      mp_config.nof_paths = 3;
+      
+      int arr[MAX_NOF_PILOTS];
+      arr[0] = stoi(row[0]);
+      mp_config.m[0] = stoi(row[0]);
+
+      arr[0] = stoi(row[1]);
+      mp_config.n[0] = stoi(row[1]);
+
+      // std::cout << "mpconfig m" << mp_config.m[0] << std::endl;
+      _Complex double h;
+
+      std::string complexStr = row[2]; // Complex number as a string
+      std::cout << complexStr << std::endl;
+      
+      std::complex<double> complexNum;
+      std::istringstream iss(complexStr);
+      iss >> complexNum; // Extract complex number from string
+      
+
+      
+
+      mp_config.y[0] = complexNum;
+
+      break;
+
+    }
+    std::cout << "main completed" << std::endl;
 }

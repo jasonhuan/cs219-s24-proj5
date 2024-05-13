@@ -247,14 +247,15 @@ int main() {
       std::string complexStr = row[2]; // Complex number as a string
       std::cout << complexStr << std::endl;
       
-      std::complex<double> complexNum;
-      std::istringstream iss(complexStr);
-      iss >> complexNum; // Extract complex number from string
+      _Complex double complexNum;
+      //std::istringstream iss(complexStr);
+      
+      //rewrite this line
+      //iss >> complexNum; // Extract complex number from string
       
 
-      
-
-      mp_config.y[0] = complexNum;
+      //will work when above line is finished
+      //mp_config.y[0] = complexNum;
 
       break;
 

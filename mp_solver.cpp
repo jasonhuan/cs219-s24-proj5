@@ -11,7 +11,6 @@
 #include "./mp_solver.h"
 
 #include <iostream>
-
 #include <fstream>
 #include <string>
 #include <vector>
@@ -232,6 +231,7 @@ int main() {
     cout << "==================STARTING for loop=====================" << '\n';
     int i = 0;
     for (const auto& row : data) {
+      cout << "===================================loop iteration: " << i << '\n';
       mp_config_t mp_config;
       mp_profile_t mp_profile;
       mp_config.nof_pilots = 32;
@@ -280,7 +280,6 @@ int main() {
 
 
       i++;
-      break;
     }
 
     // ==================AFTER for loop=====================

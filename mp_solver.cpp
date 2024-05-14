@@ -249,7 +249,14 @@ int main() {
       
       _Complex double complexNum;
       //std::istringstream iss(complexStr);
-      
+     
+      // read in first value in array for object complexNum: complexNum[0] = <some_double>
+      // read in second value in array (the imaginary part) for complexNum: complexNum[1] = <some_double_pos_or_neg>
+      string complexNum_real = complexStr.substr(0,complexStr.find('+'));
+      string complexNum_imagin = complexStr.substr(complexStr.find('+') + 1, complexStr.length() - complexNum_real.length() - 2); // minus 2 because one to take off the 'j' and one to make up for starting the remaining substring 1 character AFTER the plus sign (instead of on it)
+
+      cout << "test complexNum_real: " << complexNum_real << '\n' << "test complexNum_imagin: " << complexNum_imagin << '\n';       
+ 
       //rewrite this line
       //iss >> complexNum; // Extract complex number from string
       

@@ -17,7 +17,7 @@
 #include <vector>
 #include <sstream>
 #include <complex>
-
+#include <cstring>
 
 #define MAX_ITER 20
 using namespace std;
@@ -241,11 +241,13 @@ int main() {
       arr[0] = stoi(row[1]);
       mp_config.n[0] = stoi(row[1]);
 
+      // ==================STARTING _Complex=====================
+      cout << "==================STARTING _Complex=====================" << '\n';
       // std::cout << "mpconfig m" << mp_config.m[0] << std::endl;
       _Complex double h;
 
       std::string complexStr = row[2]; // Complex number as a string
-      std::cout << complexStr << std::endl;
+      std::cout << complexStr << std::endl; //DEBUG0
       
       _Complex double complexNum;
       //std::istringstream iss(complexStr);
@@ -255,7 +257,20 @@ int main() {
       string complexNum_real = complexStr.substr(0,complexStr.find('+'));
       string complexNum_imagin = complexStr.substr(complexStr.find('+') + 1, complexStr.length() - complexNum_real.length() - 2); // minus 2 because one to take off the 'j' and one to make up for starting the remaining substring 1 character AFTER the plus sign (instead of on it)
 
-      cout << "test complexNum_real: " << complexNum_real << '\n' << "test complexNum_imagin: " << complexNum_imagin << '\n';       
+      cout << "test complexNum_real: " << complexNum_real << '\n' << "test complexNum_imagin: " << complexNum_imagin << '\n'; //DEBUG1 
+
+      double complexNum_real_d = stod(complexNum_real);
+      double complexNum_imagin_d = stod(complexNum_imagin);
+
+      double a[2];
+      a[0] = complexNum_real_d;
+      a[1] = complexNum_imagin_d;
+      memcpy(&complexNum, a, sizeof complexNum);
+
+      //memcpy(&complexNum, &complexNum_real_d, sizeof complexNum_real_d);
+      //memcpy(&complexNum + sizeof complexNum_real_d, &complexNum_imagin_d, sizeof complexNum_imagin_d);
+
+      cout << "real: " << creal(complexNum) << '\n' << "imaginary: " << cimag(complexNum) << '\n'; //DEBUG2
  
       //rewrite this line
       //iss >> complexNum; // Extract complex number from string
@@ -267,5 +282,8 @@ int main() {
       break;
 
     }
+
+    // ==================AFTER for loop=====================
+    cout << "==================AFTER for loop=====================" << '\n';
     std::cout << "main completed" << std::endl;
 }

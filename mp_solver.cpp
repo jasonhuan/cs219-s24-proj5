@@ -228,6 +228,7 @@ int main() {
     //     std::cout << std::endl;
     // }
 
+    int i = 0;
     for (const auto& row : data) {
       mp_config_t mp_config;
       mp_profile_t mp_profile;
@@ -250,7 +251,6 @@ int main() {
       std::cout << complexStr << std::endl; //DEBUG0
       
       _Complex double complexNum;
-      //std::istringstream iss(complexStr);
      
       // read in first value in array for object complexNum: complexNum[0] = <some_double>
       // read in second value in array (the imaginary part) for complexNum: complexNum[1] = <some_double_pos_or_neg>
@@ -271,16 +271,15 @@ int main() {
       //memcpy(&complexNum + sizeof complexNum_real_d, &complexNum_imagin_d, sizeof complexNum_imagin_d);
 
       cout << "real: " << creal(complexNum) << '\n' << "imaginary: " << cimag(complexNum) << '\n'; //DEBUG2
+
  
-      //rewrite this line
-      //iss >> complexNum; // Extract complex number from string
-      
-
       //will work when above line is finished
-      //mp_config.y[0] = complexNum;
+      mp_config.y[i] = complexNum;
 
+
+
+      i++;
       break;
-
     }
 
     // ==================AFTER for loop=====================

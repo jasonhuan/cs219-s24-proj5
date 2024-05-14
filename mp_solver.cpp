@@ -228,6 +228,8 @@ int main() {
     //     std::cout << std::endl;
     // }
 
+    // ==================STARTING for loop=====================
+    cout << "==================STARTING for loop=====================" << '\n';
     int i = 0;
     for (const auto& row : data) {
       mp_config_t mp_config;
@@ -235,12 +237,11 @@ int main() {
       mp_config.nof_pilots = 32;
       mp_config.nof_paths = 3;
       
-      int arr[MAX_NOF_PILOTS];
-      arr[0] = stoi(row[0]);
-      mp_config.m[0] = stoi(row[0]);
+      mp_config.m[i] = stoi(row[0]);
+      cout << "mp_config.m: " << mp_config.m[i] << '\n';
 
-      arr[0] = stoi(row[1]);
-      mp_config.n[0] = stoi(row[1]);
+      mp_config.n[i] = stoi(row[1]);
+      cout << "mp_config.n: " << mp_config.n[i] << '\n';
 
       // ==================STARTING _Complex=====================
       cout << "==================STARTING _Complex=====================" << '\n';

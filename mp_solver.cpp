@@ -230,10 +230,10 @@ int main() {
     // ==================STARTING for loop=====================
     cout << "==================STARTING for loop=====================" << '\n';
     int i = 0;
+    mp_config_t mp_config;
+    mp_profile_t mp_profile;
     for (const auto& row : data) {
       cout << "===================================loop iteration: " << i << '\n';
-      mp_config_t mp_config;
-      mp_profile_t mp_profile;
       mp_config.nof_pilots = 32;
       mp_config.nof_paths = 3;
       
@@ -270,13 +270,12 @@ int main() {
 
       //memcpy(&complexNum, &complexNum_real_d, sizeof complexNum_real_d);
       //memcpy(&complexNum + sizeof complexNum_real_d, &complexNum_imagin_d, sizeof complexNum_imagin_d);
-
+      
       cout << "real: " << creal(complexNum) << '\n' << "imaginary: " << cimag(complexNum) << '\n'; //DEBUG2
-
  
       //will work when above line is finished
       mp_config.y[i] = complexNum;
-
+      cout << "mp_config real: " << creal(mp_config.y[i]) << '\n' << "mp_config imaginary: " << cimag(mp_config.y[i]) << '\n'; //DEBUG2
 
 
       i++;

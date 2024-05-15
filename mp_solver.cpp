@@ -288,4 +288,13 @@ int main() {
     cout << "NOF_PATHS: " << mp_config.nof_paths <<  "\n";
     cout << "NOF_PILOTS: " << mp_config.nof_pilots <<  "\n";
     std::cout << "main completed" << std::endl;
+
+    cout << "=================calling mp_solver()=================" << "\n";
+    mp_solver(&mp_config, &mp_profile);
+    for (int j = 0; j < mp_config.nof_paths; ++j) {
+        cout << "=================path " << j << "=================" << "\n";
+        cout << "tau: " << mp_profile.tau[j] << "\n";
+        cout << "nu: " << mp_profile.nu[j] << "\n";
+        cout << "h: " << creal(mp_profile.tau[j]) << "+" << cimag(mp_profile.tau[j]) << "j\n";
+    }
 }

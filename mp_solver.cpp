@@ -280,8 +280,12 @@ int main() {
 
       i++;
     }
+    mp_config.nof_paths = MAX_NOF_PATHS;
+    mp_config.nof_pilots = MAX_NOF_PILOTS;
 
     // ==================AFTER for loop=====================
     cout << "==================AFTER for loop=====================" << '\n';
+    cout << "NOF_PATHS: " << mp_config.nof_paths <<  "\n";
+    cout << "NOF_PILOTS: " << mp_config.nof_pilots <<  "\n";
     std::cout << "main completed" << std::endl;
 }

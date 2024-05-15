@@ -17,6 +17,7 @@
 #include <sstream>
 #include <complex>
 #include <cstring>
+#include <chrono>
 
 #define MAX_ITER 20
 using namespace std;
@@ -289,8 +290,14 @@ int main() {
     cout << "NOF_PILOTS: " << mp_config.nof_pilots <<  "\n";
     std::cout << "main completed" << std::endl;
 
-    cout << "=================calling mp_solver()=================" << "\n";
+    cout << "=================begin calling mp_solver() and timing=================" << "\n";
+    auto start = std::chrono::high_resolution_clock::now();
     mp_solver(&mp_config, &mp_profile);
+    auto stop = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+    cout << "Elapsed time: " << duration.count() << " us\n";
+    cout << "=================done calling mp_solver() and timing=================" << "\n";
+
     for (int j = 0; j < mp_config.nof_paths; ++j) {
         cout << "=================path " << j << "=================" << "\n";
         cout << "tau: " << mp_profile.tau[j] << "\n";

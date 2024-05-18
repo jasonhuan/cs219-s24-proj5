@@ -8,6 +8,7 @@
 #include <gsl/gsl_blas.h>
 #include <gsl/gsl_multifit_nlinear.h>
 #include <immintrin.h>
+#include "ctpl_stl.h"
 #include "./mp_solver.h"
 
 #include <iostream>
@@ -18,6 +19,7 @@
 #include <complex>
 #include <cstring>
 #include <chrono>
+#include <thread>
 
 #define MAX_ITER 20
 using namespace std;
@@ -30,26 +32,87 @@ channel_eq_func(const gsl_vector * x, void *data,
         gsl_vector * f)
 {
   mp_config_t *mp_config = (mp_config_t *)data;
+  const int num_threads = 4; // configurable
 
-  double tau[MAX_NOF_PATHS];
-  double nu[MAX_NOF_PATHS];
-  _Complex double h[MAX_NOF_PATHS];
+  // vector to hold the threads
+  std::vector<std::thread> threads(num_threads);
 
-  for (int p = 0; p < mp_config->nof_paths; ++p) {
-    tau[p] = gsl_vector_get(x, p);
-    nu[p] = gsl_vector_get(x, mp_config->nof_paths+p);
-    h[p] = gsl_vector_get(x, 2*mp_config->nof_paths+p) + gsl_vector_get(x, 3*mp_config->nof_paths+p)*I;
+  // lambda function to be executed by each thread
+  auto thread_worker = [&](int start, int end) {
+      double tau[MAX_NOF_PATHS];
+      double nu[MAX_NOF_PATHS];
+      _Complex double h[MAX_NOF_PATHS];
+
+      for (int p = 0; p < mp_config->nof_paths; ++p) {
+          tau[p] = gsl_vector_get(x, p);
+          nu[p] = gsl_vector_get(x, mp_config->nof_paths+p);
+          h[p] = gsl_vector_get(x, 2*mp_config->nof_paths+p) + gsl_vector_get(x, 3*mp_config->nof_paths+p)*I;
+      }
+
+      for (int k = start; k < end; ++k) {
+          _Complex double Yk = 0;
+          for (int p = 0; p < mp_config->nof_paths; ++p) {
+              Yk += h[p] * cexp(-I*2*M_PI*(tau[p] * (mp_config->m[k] + 0.5) - nu[p] * (mp_config->n[k] + 0.5)));
+          }
+          gsl_vector_set(f, k, cabs(Yk - mp_config->y[k]));
+      }
+  };
+
+  // Calculate the number of elements per thread
+  int elements_per_thread = mp_config->nof_pilots / num_threads;
+  int remainder = mp_config->nof_pilots % num_threads;
+  int start = 0;
+
+  // Create and start the threads
+  for (int i = 0; i < num_threads; ++i) {
+      int end = start + elements_per_thread + (i < remainder ? 1 : 0);
+      threads[i] = std::thread(thread_worker, start, end);
+      start = end;
   }
 
-  for (int k = 0; k < mp_config->nof_pilots; ++k)
-  {
-    _Complex double Yk = 0;
-    for (int p = 0; p < mp_config->nof_paths; ++p) {
-      Yk += h[p] * cexp(-I*2*M_PI*(tau[p] * (mp_config->m[k] + 0.5) - nu[p] * (mp_config->n[k] + 0.5)));
-    }
-    gsl_vector_set(f, k, cabs(Yk - mp_config->y[k]));
+  // Join the threads
+  for (auto &thread : threads) {
+      thread.join();
   }
 
+  // THREAD POOLLING (lowkey broken rn)
+  // ctpl::thread_pool pool(NUM_THREADS);
+
+  // auto worker = [&](int id, int start, int end) {
+
+  //   double tau[MAX_NOF_PATHS];
+  //   double nu[MAX_NOF_PATHS];
+  //   _Complex double h[MAX_NOF_PATHS];
+  
+  //   for (int p = 0; p < mp_config->nof_paths; ++p) {
+  //     tau[p] = gsl_vector_get(x, p);
+  //     nu[p] = gsl_vector_get(x, mp_config->nof_paths+p);
+  //     h[p] = gsl_vector_get(x, 2*mp_config->nof_paths+p) + gsl_vector_get(x, 3*mp_config->nof_paths+p)*I;
+  //   }
+  
+  //   for (int k = start; k < end; ++k)
+  //   {
+  //     _Complex double Yk = 0;
+  //     for (int p = 0; p < mp_config->nof_paths; ++p) {
+  //       Yk += h[p] * cexp(-I*2*M_PI*(tau[p] * (mp_config->m[k] + 0.5) - nu[p] * (mp_config->n[k] + 0.5)));
+  //     }
+  //     gsl_vector_set(f, k, cabs(Yk - mp_config->y[k]));
+  //   }
+  // };
+
+  // int elements_per_thread = mp_config->nof_pilots / NUM_THREADS;
+  // int remainder = mp_config->nof_pilots % NUM_THREADS;
+  // int start = 0;
+  // std::vector<std::future<void>> futures;
+
+  // for (int i = 0; i < NUM_THREADS; ++i) {
+  //   int end = start + elements_per_thread;
+  //   futures.push_back(pool.push(worker, start, end));
+  //   start = end;
+  // }
+  //   for (auto &future : futures) {
+  //   future.get();
+  // }
   return GSL_SUCCESS;
 }
 
@@ -290,6 +353,23 @@ int main() {
     cout << "NOF_PILOTS: " << mp_config.nof_pilots <<  "\n";
     std::cout << "main completed" << std::endl;
 
+
+  //  cout << "=================begin calling mp_solver() and timing=================" << "\n";
+  //  auto start = std::chrono::high_resolution_clock::now();
+  //  mp_solver(&mp_config, &mp_profile);
+  //  auto stop = std::chrono::high_resolution_clock::now();
+  //  auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+  //  cout << "Baseline elapsed time: " << duration.count() << " us\n";
+  //  cout << "=================done calling mp_solver() and timing=================" << "\n";
+
+  //  cout << "=================outputting results=================" << "\n";
+  //  for (int j = 0; j < mp_config.nof_paths; ++j) {
+  //      cout << "=================path " << j << "=================" << "\n";
+  //      cout << "tau: " << mp_profile.tau[j] << "\n";
+  //      cout << "nu: " << mp_profile.nu[j] << "\n";
+  //      cout << "h: " << creal(mp_profile.tau[j]) << "+" << cimag(mp_profile.tau[j]) << "j\n";
+  //  }
+
     cout << "=================begin calling mp_solver() and timing=================" << "\n";
     auto start = std::chrono::high_resolution_clock::now();
     mp_solver(&mp_config, &mp_profile);
@@ -298,6 +378,7 @@ int main() {
     cout << "Elapsed time: " << duration.count() << " us\n";
     cout << "=================done calling mp_solver() and timing=================" << "\n";
 
+    cout << "=================outputting results=================" << "\n";
     for (int j = 0; j < mp_config.nof_paths; ++j) {
         cout << "=================path " << j << "=================" << "\n";
         cout << "tau: " << mp_profile.tau[j] << "\n";

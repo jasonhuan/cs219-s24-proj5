@@ -9,6 +9,7 @@
 #include <gsl/gsl_multifit_nlinear.h>
 #include <immintrin.h>
 #include "./mp_solver.h"
+#include "/usr/local/include/gpufit/gpufit.h"
 
 #include <iostream>
 #include <fstream>
@@ -117,6 +118,7 @@ channel_eq_func(const gsl_vector * x, void *data,
 //
 //      __m128d vdiff = _mm_sub_pd(vy, vYk);
 //      __m128d vsq = _mm_mul_pd(vdiff, vdiff);
+//
 //
 //      __m128d vres = _mm_hadd_pd(vsq, vsq);
 //      _mm_store_pd(tbuf, vres);
@@ -253,8 +255,6 @@ int main() {
       
       _Complex double complexNum;
      
-      // read in first value in array for object complexNum: complexNum[0] = <some_double>
-      // read in second value in array (the imaginary part) for complexNum: complexNum[1] = <some_double_pos_or_neg>
       string complexNum_real = complexStr.substr(0,complexStr.find('+'));
       string complexNum_imagin = complexStr.substr(complexStr.find('+') + 1, complexStr.length() - complexNum_real.length() - 2); // minus 2 because one to take off the 'j' and one to make up for starting the remaining substring 1 character AFTER the plus sign (instead of on it)
 

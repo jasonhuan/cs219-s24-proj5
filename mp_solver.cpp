@@ -32,87 +32,27 @@ channel_eq_func(const gsl_vector * x, void *data,
         gsl_vector * f)
 {
   mp_config_t *mp_config = (mp_config_t *)data;
-  const int num_threads = 4; // configurable
 
-  // vector to hold the threads
-  std::vector<std::thread> threads(num_threads);
+  double tau[MAX_NOF_PATHS];
+  double nu[MAX_NOF_PATHS];
+  _Complex double h[MAX_NOF_PATHS];
 
-  // lambda function to be executed by each thread
-  auto thread_worker = [&](int start, int end) {
-      double tau[MAX_NOF_PATHS];
-      double nu[MAX_NOF_PATHS];
-      _Complex double h[MAX_NOF_PATHS];
+  for (int p = 0; p < mp_config->nof_paths; ++p) 
+  {
+      tau[p] = gsl_vector_get(x, p);
+      nu[p] = gsl_vector_get(x, mp_config->nof_paths+p);
+      h[p] = gsl_vector_get(x, 2*mp_config->nof_paths+p) + gsl_vector_get(x, 3*mp_config->nof_paths+p)*I;
+  }
 
+  for (int k = 0; k < mp_config->nof_pilots; ++k)
+  {
+      _Complex double Yk = 0;
       for (int p = 0; p < mp_config->nof_paths; ++p) {
-          tau[p] = gsl_vector_get(x, p);
-          nu[p] = gsl_vector_get(x, mp_config->nof_paths+p);
-          h[p] = gsl_vector_get(x, 2*mp_config->nof_paths+p) + gsl_vector_get(x, 3*mp_config->nof_paths+p)*I;
+          Yk += h[p] * cexp(-I*2*M_PI*(tau[p] * (mp_config->m[k] + 0.5) - nu[p] * (mp_config->n[k] + 0.5)));
       }
-
-      for (int k = start; k < end; ++k) {
-          _Complex double Yk = 0;
-          for (int p = 0; p < mp_config->nof_paths; ++p) {
-              Yk += h[p] * cexp(-I*2*M_PI*(tau[p] * (mp_config->m[k] + 0.5) - nu[p] * (mp_config->n[k] + 0.5)));
-          }
-          gsl_vector_set(f, k, cabs(Yk - mp_config->y[k]));
-      }
-  };
-
-  // Calculate the number of elements per thread
-  int elements_per_thread = mp_config->nof_pilots / num_threads;
-  int remainder = mp_config->nof_pilots % num_threads;
-  int start = 0;
-
-  // Create and start the threads
-  for (int i = 0; i < num_threads; ++i) {
-      int end = start + elements_per_thread + (i < remainder ? 1 : 0);
-      threads[i] = std::thread(thread_worker, start, end);
-      start = end;
+      gsl_vector_set(f, k, cabs(Yk - mp_config->y[k]));
   }
 
-  // Join the threads
-  for (auto &thread : threads) {
-      thread.join();
-  }
-
-  // THREAD POOLLING (lowkey broken rn)
-  // ctpl::thread_pool pool(NUM_THREADS);
-
-  // auto worker = [&](int id, int start, int end) {
-
-  //   double tau[MAX_NOF_PATHS];
-  //   double nu[MAX_NOF_PATHS];
-  //   _Complex double h[MAX_NOF_PATHS];
-  
-  //   for (int p = 0; p < mp_config->nof_paths; ++p) {
-  //     tau[p] = gsl_vector_get(x, p);
-  //     nu[p] = gsl_vector_get(x, mp_config->nof_paths+p);
-  //     h[p] = gsl_vector_get(x, 2*mp_config->nof_paths+p) + gsl_vector_get(x, 3*mp_config->nof_paths+p)*I;
-  //   }
-  
-  //   for (int k = start; k < end; ++k)
-  //   {
-  //     _Complex double Yk = 0;
-  //     for (int p = 0; p < mp_config->nof_paths; ++p) {
-  //       Yk += h[p] * cexp(-I*2*M_PI*(tau[p] * (mp_config->m[k] + 0.5) - nu[p] * (mp_config->n[k] + 0.5)));
-  //     }
-  //     gsl_vector_set(f, k, cabs(Yk - mp_config->y[k]));
-  //   }
-  // };
-
-  // int elements_per_thread = mp_config->nof_pilots / NUM_THREADS;
-  // int remainder = mp_config->nof_pilots % NUM_THREADS;
-  // int start = 0;
-  // std::vector<std::future<void>> futures;
-
-  // for (int i = 0; i < NUM_THREADS; ++i) {
-  //   int end = start + elements_per_thread;
-  //   futures.push_back(pool.push(worker, start, end));
-  //   start = end;
-  // }
-  //   for (auto &future : futures) {
-  //   future.get();
-  // }
   return GSL_SUCCESS;
 }
 
@@ -294,12 +234,17 @@ int main() {
     // ==================STARTING for loop=====================
     cout << "==================STARTING for loop=====================" << '\n';
     int i = 0;
+
+    std::vector<mp_config_t> configs;
+    std::vector<std::thread> threads;
+
+    int elements_per_thread = 4;
     mp_config_t mp_config;
+    mp_config.nof_pilots = elements_per_thread;
+    mp_config.nof_paths = 3;
     mp_profile_t mp_profile;
     for (const auto& row : data) {
       cout << "===================================loop iteration: " << i << '\n';
-      mp_config.nof_pilots = 32;
-      mp_config.nof_paths = 3;
       
       mp_config.m[i] = stoi(row[0]);
       cout << "mp_config.m: " << mp_config.m[i] << '\n';
@@ -341,11 +286,24 @@ int main() {
       mp_config.y[i] = complexNum;
       cout << "mp_config real: " << creal(mp_config.y[i]) << '\n' << "mp_config imaginary: " << cimag(mp_config.y[i]) << '\n'; //DEBUG2
 
-
       i++;
+      if (i == elements_per_thread) {
+        // threads.push_back(std::thread(mp_solver, mp_config, mp_profile));
+        configs.push_back(mp_config);
+        i = 0;
+      }
     }
-    mp_config.nof_paths = MAX_NOF_PATHS;
-    mp_config.nof_pilots = MAX_NOF_PILOTS;
+
+    cout << configs.size() << " configs" << std::endl;
+
+    for (const auto& config : configs) {
+      cout << "config======================" << std::endl;
+      for (int i = 0; i < config.nof_pilots; i++) {
+        cout << config.m[i] << ", " << config.n[i] <<  ", " << creal(config.y[i]) << cimag(config.y[i])<< std::endl;
+      }
+    }
+    // mp_config.nof_paths = MAX_NOF_PATHS;
+    // mp_config.nof_pilots = MAX_NOF_PILOTS;
 
     // ==================AFTER for loop=====================
     cout << "==================AFTER for loop=====================" << '\n';
@@ -372,7 +330,18 @@ int main() {
 
     cout << "=================begin calling mp_solver() and timing=================" << "\n";
     auto start = std::chrono::high_resolution_clock::now();
-    mp_solver(&mp_config, &mp_profile);
+    try {
+      for (int i = 0; i < configs.size(); i++) {
+        threads.emplace_back(mp_solver, &configs[i], &mp_profile);
+      }
+      for (auto& t : threads) {
+        if (t.joinable()){
+          t.join();
+        }
+      }
+    } catch (const std::system_error &e) {
+      std:cerr << "Error creating thread: " << e.what() << std::endl;
+    }
     auto stop = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
     cout << "Elapsed time: " << duration.count() << " us\n";
@@ -385,4 +354,20 @@ int main() {
         cout << "nu: " << mp_profile.nu[j] << "\n";
         cout << "h: " << creal(mp_profile.tau[j]) << "+" << cimag(mp_profile.tau[j]) << "j\n";
     }
+
+    // cout << "=================path " << 0 << "=================" << "\n";
+    // cout << "tau: " << mp_profile_1.tau[0] << "\n";
+    // cout << "nu: " << mp_profile_1.nu[0] << "\n";
+    // cout << "h: " << creal(mp_profile_1.h[0]) << "+" << cimag(mp_profile_1.h[0]) << "j\n";
+
+    // cout << "=================path " << 1 << "=================" << "\n";
+    // cout << "tau: " << mp_profile_2.tau[0] << "\n";
+    // cout << "nu: " << mp_profile_2.nu[0] << "\n";
+    // cout << "h: " << creal(mp_profile_2.h[0]) << "+" << cimag(mp_profile_2.h[0]) << "j\n";
+
+    // cout << "=================path " << 2 << "=================" << "\n";
+    // cout << "tau: " << mp_profile_3.tau[0] << "\n";
+    // cout << "nu: " << mp_profile_3.nu[0] << "\n";
+    // cout << "h: " << creal(mp_profile_3.h[0]) << "+" << cimag(mp_profile_3.h[0]) << "j\n";
+
 }

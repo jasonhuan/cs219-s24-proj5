@@ -8,7 +8,7 @@
 #include <gsl/gsl_blas.h>
 #include <gsl/gsl_multifit_nlinear.h>
 #include <immintrin.h>
-#include "ctpl_stl.h"
+#include "thread_pool.h"
 #include "./mp_solver.h"
 
 #include <iostream>
@@ -20,6 +20,8 @@
 #include <cstring>
 #include <chrono>
 #include <thread>
+#include <future>
+#include <cassert>
 
 #define MAX_ITER 20
 using namespace std;
@@ -194,14 +196,38 @@ int mp_solver(mp_config_t *mp_config, mp_profile_t *mp_profile)
   return 0;
 }
 
-int main() {
-    // read input
-    // mp_config_t mp_config;
-    // mp_profile_t mp_profile;
-    // mp_config.nof_pilots = 32;
-    // mp_config.nof_paths = 3;
+void exampleFunction(int i) {
+    std::cout << "Thread " << i << " is running.\n";
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+}
+
+int main(int argc, char *argv[]) {
+    assert(("You should pass in at least 1 argument (true/false) indicating multithreaded version or not.", argc >= 2 ));
+    assert(("Ensure that the argument is either true or false", std::string(argv[1]) == "true" || std::string(argv[1]) == "false"));
+
+    // true indicates thread pooled version, false indicates single threaded
+    bool multithread; 
+    istringstream(argv[1]) >> std::boolalpha >> multithread;
+    
+    int num_threads;
+    
+    if (multithread) {
+        assert(("You should pass in a second argument to indicate how many threads should be used", argc == 3));
+        std::stringstream ss(argv[2]);
+        int value;
+        if (ss >> value) {
+            std::cout << "Argument can be cast to an integer: " << value << std::endl;
+            assert(("Value must be a positive integer", value > 0));
+            num_threads = value;
+        } else {
+            std::cerr << "Invalid argument: not an integer" << std::endl;
+            exit(1);
+        }
+    } 
+    cout << "num_threads: " << num_threads << std::endl;
 
 
+    auto start = std::chrono::high_resolution_clock::now();
     std::ifstream file("sample_input.csv");
     if (!file.is_open()) {
       std::cout << "Failed to open the file." << std::endl;
@@ -223,26 +249,14 @@ int main() {
         data.push_back(row);
     }
 
-    // Print the imported data
-    // for (const auto& row : data) {
-    //     for (const auto& cell : row) {
-    //         std::cout << cell << " ";
-    //     }
-    //     std::cout << std::endl;
-    // }
-
     // ==================STARTING for loop=====================
     cout << "==================STARTING for loop=====================" << '\n';
-    int i = 0;
 
-    std::vector<mp_config_t> configs;
-    std::vector<std::thread> threads;
-
-    int elements_per_thread = 4;
     mp_config_t mp_config;
-    mp_config.nof_pilots = elements_per_thread;
-    mp_config.nof_paths = 3;
+    mp_config.nof_pilots = MAX_NOF_PILOTS;
+    mp_config.nof_paths = MAX_NOF_PATHS;
     mp_profile_t mp_profile;
+    int i = 0;
     for (const auto& row : data) {
       cout << "===================================loop iteration: " << i << '\n';
       
@@ -287,24 +301,7 @@ int main() {
       cout << "mp_config real: " << creal(mp_config.y[i]) << '\n' << "mp_config imaginary: " << cimag(mp_config.y[i]) << '\n'; //DEBUG2
 
       i++;
-      if (i == elements_per_thread) {
-        // threads.push_back(std::thread(mp_solver, mp_config, mp_profile));
-        configs.push_back(mp_config);
-        i = 0;
-      }
     }
-
-    cout << configs.size() << " configs" << std::endl;
-
-    for (const auto& config : configs) {
-      cout << "config======================" << std::endl;
-      for (int i = 0; i < config.nof_pilots; i++) {
-        cout << config.m[i] << ", " << config.n[i] <<  ", " << creal(config.y[i]) << cimag(config.y[i])<< std::endl;
-      }
-    }
-    // mp_config.nof_paths = MAX_NOF_PATHS;
-    // mp_config.nof_pilots = MAX_NOF_PILOTS;
-
     // ==================AFTER for loop=====================
     cout << "==================AFTER for loop=====================" << '\n';
     cout << "NOF_PATHS: " << mp_config.nof_paths <<  "\n";
@@ -312,62 +309,33 @@ int main() {
     std::cout << "main completed" << std::endl;
 
 
-  //  cout << "=================begin calling mp_solver() and timing=================" << "\n";
-  //  auto start = std::chrono::high_resolution_clock::now();
-  //  mp_solver(&mp_config, &mp_profile);
-  //  auto stop = std::chrono::high_resolution_clock::now();
-  //  auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
-  //  cout << "Baseline elapsed time: " << duration.count() << " us\n";
-  //  cout << "=================done calling mp_solver() and timing=================" << "\n";
+  int num_iterations = 2000;
+  if (!multithread) {
+    
+    cout << "=================begin singlethreaded" << num_iterations <<  "x mp_solver() and timing=================" << "\n";
+    for (int i = 0; i < num_iterations; ++i) {
+      mp_solver(&mp_config, &mp_profile);
+    }
+  } else {
+    ThreadPool pool(num_threads);
 
-  //  cout << "=================outputting results=================" << "\n";
-  //  for (int j = 0; j < mp_config.nof_paths; ++j) {
-  //      cout << "=================path " << j << "=================" << "\n";
-  //      cout << "tau: " << mp_profile.tau[j] << "\n";
-  //      cout << "nu: " << mp_profile.nu[j] << "\n";
-  //      cout << "h: " << creal(mp_profile.tau[j]) << "+" << cimag(mp_profile.tau[j]) << "j\n";
-  //  }
-
+    std::vector<std::future<int>> results;
     cout << "=================begin calling mp_solver() and timing=================" << "\n";
-    auto start = std::chrono::high_resolution_clock::now();
     try {
-      for (int i = 0; i < configs.size(); i++) {
-        threads.emplace_back(mp_solver, &configs[i], &mp_profile);
+      for (int i = 0; i < num_iterations; i++) {
+        results.emplace_back(pool.enqueue(mp_solver, &mp_config, &mp_profile));
       }
-      for (auto& t : threads) {
-        if (t.joinable()){
-          t.join();
-        }
+      for (auto&& result : results) {
+        result.get();
       }
     } catch (const std::system_error &e) {
-      std:cerr << "Error creating thread: " << e.what() << std::endl;
+      std:cout << "Error creating thread: " << e.what() << std::endl;
     }
-    auto stop = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
-    cout << "Elapsed time: " << duration.count() << " us\n";
-    cout << "=================done calling mp_solver() and timing=================" << "\n";
+  }
 
-    cout << "=================outputting results=================" << "\n";
-    for (int j = 0; j < mp_config.nof_paths; ++j) {
-        cout << "=================path " << j << "=================" << "\n";
-        cout << "tau: " << mp_profile.tau[j] << "\n";
-        cout << "nu: " << mp_profile.nu[j] << "\n";
-        cout << "h: " << creal(mp_profile.tau[j]) << "+" << cimag(mp_profile.tau[j]) << "j\n";
-    }
-
-    // cout << "=================path " << 0 << "=================" << "\n";
-    // cout << "tau: " << mp_profile_1.tau[0] << "\n";
-    // cout << "nu: " << mp_profile_1.nu[0] << "\n";
-    // cout << "h: " << creal(mp_profile_1.h[0]) << "+" << cimag(mp_profile_1.h[0]) << "j\n";
-
-    // cout << "=================path " << 1 << "=================" << "\n";
-    // cout << "tau: " << mp_profile_2.tau[0] << "\n";
-    // cout << "nu: " << mp_profile_2.nu[0] << "\n";
-    // cout << "h: " << creal(mp_profile_2.h[0]) << "+" << cimag(mp_profile_2.h[0]) << "j\n";
-
-    // cout << "=================path " << 2 << "=================" << "\n";
-    // cout << "tau: " << mp_profile_3.tau[0] << "\n";
-    // cout << "nu: " << mp_profile_3.nu[0] << "\n";
-    // cout << "h: " << creal(mp_profile_3.h[0]) << "+" << cimag(mp_profile_3.h[0]) << "j\n";
+  auto stop = std::chrono::high_resolution_clock::now();
+  auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+  cout << "Elapsed time: " << duration.count() << " us\n";
+  cout << "=================done calling mp_solver() and timing=================" << "\n";
 
 }

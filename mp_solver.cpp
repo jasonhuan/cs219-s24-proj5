@@ -8,6 +8,7 @@
 #include <gsl/gsl_blas.h>
 #include <gsl/gsl_multifit_nlinear.h>
 #include <immintrin.h>
+#include "thread_pool.h"
 #include "./mp_solver.h"
 //#include "/usr/local/include/gpufit/gpufit.h"
 #include "/home/shared/Gpufit/Gpufit/gpufit.h"
@@ -19,6 +20,10 @@
 #include <sstream>
 #include <complex>
 #include <cstring>
+#include <chrono>
+#include <thread>
+#include <future>
+#include <cassert>
 
 #define MAX_ITER 20
 using namespace std;
@@ -36,19 +41,20 @@ channel_eq_func(const gsl_vector * x, void *data,
   double nu[MAX_NOF_PATHS];
   _Complex double h[MAX_NOF_PATHS];
 
-  for (int p = 0; p < mp_config->nof_paths; ++p) {
-    tau[p] = gsl_vector_get(x, p);
-    nu[p] = gsl_vector_get(x, mp_config->nof_paths+p);
-    h[p] = gsl_vector_get(x, 2*mp_config->nof_paths+p) + gsl_vector_get(x, 3*mp_config->nof_paths+p)*I;
+  for (int p = 0; p < mp_config->nof_paths; ++p) 
+  {
+      tau[p] = gsl_vector_get(x, p);
+      nu[p] = gsl_vector_get(x, mp_config->nof_paths+p);
+      h[p] = gsl_vector_get(x, 2*mp_config->nof_paths+p) + gsl_vector_get(x, 3*mp_config->nof_paths+p)*I;
   }
 
   for (int k = 0; k < mp_config->nof_pilots; ++k)
   {
-    _Complex double Yk = 0;
-    for (int p = 0; p < mp_config->nof_paths; ++p) {
-      Yk += h[p] * cexp(-I*2*M_PI*(tau[p] * (mp_config->m[k] + 0.5) - nu[p] * (mp_config->n[k] + 0.5)));
-    }
-    gsl_vector_set(f, k, cabs(Yk - mp_config->y[k]));
+      _Complex double Yk = 0;
+      for (int p = 0; p < mp_config->nof_paths; ++p) {
+          Yk += h[p] * cexp(-I*2*M_PI*(tau[p] * (mp_config->m[k] + 0.5) - nu[p] * (mp_config->n[k] + 0.5)));
+      }
+      gsl_vector_set(f, k, cabs(Yk - mp_config->y[k]));
   }
 
   return GSL_SUCCESS;
@@ -278,15 +284,35 @@ void simple_example()
 	}
 }
 
+int main(int argc, char *argv[]) {
+    assert(("You should pass in at least 1 argument (true/false) indicating multithreaded version or not.", argc >= 2 ));
+    assert(("Ensure that the argument is either true or false", std::string(argv[1]) == "true" || std::string(argv[1]) == "false"));
 
-int main() {
-    // read input
-    // mp_config_t mp_config;
-    // mp_profile_t mp_profile;
-    // mp_config.nof_pilots = 32;
-    // mp_config.nof_paths = 3;
+    // true indicates thread pooled version, false indicates single threaded
+    bool multithread; 
+    istringstream(argv[1]) >> std::boolalpha >> multithread;
+    
+    int num_threads;
+    
+    if (multithread) {
+        assert(("You should pass in a second argument to indicate how many threads should be used", argc == 3));
+        std::stringstream ss(argv[2]);
+        int value;
+        if (ss >> value) {
+            std::cout << "Argument can be cast to an integer: " << value << std::endl;
+            assert(("Value must be a positive integer", value > 0));
+            num_threads = value;
+        } else {
+            std::cerr << "Invalid argument: not an integer" << std::endl;
+            exit(1);
+        }
+    } 
+    cout << "num_threads: " << num_threads << std::endl;
+
     // simple_example(); //test gpufit
 
+
+    auto start = std::chrono::high_resolution_clock::now();
     std::ifstream file("sample_input.csv");
     if (!file.is_open()) {
       std::cout << "Failed to open the file." << std::endl;
@@ -308,23 +334,16 @@ int main() {
         data.push_back(row);
     }
 
-    // Print the imported data
-    // for (const auto& row : data) {
-    //     for (const auto& cell : row) {
-    //         std::cout << cell << " ";
-    //     }
-    //     std::cout << std::endl;
-    // }
-
     // ==================STARTING for loop=====================
     cout << "==================STARTING for loop=====================" << '\n';
+
+    mp_config_t mp_config;
+    mp_config.nof_pilots = MAX_NOF_PILOTS;
+    mp_config.nof_paths = MAX_NOF_PATHS;
+    mp_profile_t mp_profile;
     int i = 0;
     for (const auto& row : data) {
       cout << "===================================loop iteration: " << i << '\n';
-      mp_config_t mp_config;
-      mp_profile_t mp_profile;
-      mp_config.nof_pilots = 32;
-      mp_config.nof_paths = 3;
       
       mp_config.m[i] = stoi(row[0]);
       cout << "mp_config.m: " << mp_config.m[i] << '\n';
@@ -357,21 +376,51 @@ int main() {
 
       //memcpy(&complexNum, &complexNum_real_d, sizeof complexNum_real_d);
       //memcpy(&complexNum + sizeof complexNum_real_d, &complexNum_imagin_d, sizeof complexNum_imagin_d);
-
+      
       cout << "real: " << creal(complexNum) << '\n' << "imaginary: " << cimag(complexNum) << '\n'; //DEBUG2
-
  
       //will work when above line is finished
       mp_config.y[i] = complexNum;
-
-
+      cout << "mp_config real: " << creal(mp_config.y[i]) << '\n' << "mp_config imaginary: " << cimag(mp_config.y[i]) << '\n'; //DEBUG2
 
       i++;
     }
-
     // ==================AFTER for loop=====================
     cout << "==================AFTER for loop=====================" << '\n';
     simple_example(); //test gpufit
+    cout << "NOF_PATHS: " << mp_config.nof_paths <<  "\n";
+    cout << "NOF_PILOTS: " << mp_config.nof_pilots <<  "\n";
     std::cout << "main completed" << std::endl;
+
+
+  int num_iterations = 2000;
+  if (!multithread) {
+    
+    cout << "=================begin singlethreaded" << num_iterations <<  "x mp_solver() and timing=================" << "\n";
+    for (int i = 0; i < num_iterations; ++i) {
+      mp_solver(&mp_config, &mp_profile);
+    }
+  } else {
+    ThreadPool pool(num_threads);
+
+    std::vector<std::future<int>> results;
+    cout << "=================begin calling mp_solver() and timing=================" << "\n";
+    try {
+      for (int i = 0; i < num_iterations; i++) {
+        results.emplace_back(pool.enqueue(mp_solver, &mp_config, &mp_profile));
+      }
+      for (auto&& result : results) {
+        result.get();
+      }
+    } catch (const std::system_error &e) {
+      std:cout << "Error creating thread: " << e.what() << std::endl;
+    }
+  }
+
+  auto stop = std::chrono::high_resolution_clock::now();
+  auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+  cout << "Elapsed time: " << duration.count() << " us\n";
+  cout << "=================done calling mp_solver() and timing=================" << "\n";
+
 }
 

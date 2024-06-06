@@ -10,8 +10,8 @@ mp_solver: $(CLASSES) thread_pool.o
 thread_pool.o: thread_pool.cpp thread_pool.h
 	$(CXX) -c thread_pool.cpp 
 
-mp_solver_gpufit:
-	/usr/bin/c++ -O3 -DNDEBUG -std=gnu++14 thread_pool.cpp mp_solver.cpp -o ./mp_solver -Wl,-rpath,/home/shared/gpufit-build/Gpufit /usr/local/lib/libGpufit.so /usr/lib/x86_64-linux-gnu/libcudart_static.a -ldl /usr/lib/x86_64-linux-gnu/librt.a -lgsl -lm -lgslcblas
+mp_solver_gpufit: thread_pool.o
+	/usr/bin/c++ -O3 -DNDEBUG -std=gnu++14 mp_solver.cpp -o ./mp_solver -Wl,-rpath,/home/shared/gpufit-build/Gpufit /usr/local/lib/libGpufit.so /usr/lib/x86_64-linux-gnu/libcudart_static.a -ldl /usr/lib/x86_64-linux-gnu/librt.a -lgsl -lm -lgslcblas
 
 clean:
 	rm -rf *.o mp_solver

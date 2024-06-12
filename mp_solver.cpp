@@ -386,9 +386,9 @@ int main(int argc, char *argv[]) {
     }
     // ==================AFTER for loop=====================
     cout << "==================AFTER for loop=====================" << '\n';
-    cout << "test-1";
+    cout << "test-1\n";
     cout << "==================GPUFIT testing=====================" << '\n';
-    int num_fits; 
+    int num_fits2; 
     cout << "test0";
     std::vector<float> initial_parameters;
     std::vector<float> initial_data;
@@ -396,17 +396,17 @@ int main(int argc, char *argv[]) {
 
     cout << "test1";
     // initialize parameter array
-    for(int i = 0; i < num_fits*3*MAX_NOF_PATHS; i++){
+    for(int i = 0; i < num_fits2*3*MAX_NOF_PATHS; i++){
       initial_parameters.push_back(0); //initalize parameters as all 0's
     }
     cout << "test2";
 
-    for(int i = 0; i < num_fits*MAX_NOF_PILOTS; i++){
+    for(int i = 0; i < num_fits2*MAX_NOF_PILOTS; i++){
       initial_data.push_back(float(rand())); // randomize data for input
     }
     cout << "test3";
 
-    for(int i = 0; i < num_fits*3*MAX_NOF_PATHS; i++){
+    for(int i = 0; i < num_fits2*3*MAX_NOF_PATHS; i++){
       output_parameters.push_back(0);
     }
 

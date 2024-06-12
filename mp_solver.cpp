@@ -200,7 +200,7 @@ int mp_solver(mp_config_t *mp_config, mp_profile_t *mp_profile)
   return 0;
 }
 
-void test_gpufit(std::vector<float> _initial_parameters, std::vector<float> _initial_data, std::vector<float> _output_parameters)
+void test_gpufit(std::vector<float>* _initial_parameters, std::vector<float>* _initial_data, std::vector<float>* _output_parameters)
 {
 	/*
 		This example demonstrates a simple, minimal program containing all 

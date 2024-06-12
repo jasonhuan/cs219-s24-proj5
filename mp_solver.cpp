@@ -389,6 +389,7 @@ int main(int argc, char *argv[]) {
 
     cout << "==================GPUFIT testing=====================" << '\n';
     int num_fits; 
+    cout << "test0";
     std::vector<float> initial_parameters;
     std::vector<float> initial_data;
     std::vector<float> output_parameters;

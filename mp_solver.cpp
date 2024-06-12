@@ -393,21 +393,24 @@ int main(int argc, char *argv[]) {
     std::vector<float> initial_data;
     std::vector<float> output_parameters;
 
+    cout << "test1";
     // initialize parameter array
     for(int i = 0; i < num_fits*3*MAX_NOF_PATHS; i++){
       initial_parameters.push_back(0); //initalize parameters as all 0's
     }
+    cout << "test2";
 
     for(int i = 0; i < num_fits*MAX_NOF_PILOTS; i++){
       initial_data.push_back(float(rand())); // randomize data for input
     }
+    cout << "test3";
 
     for(int i = 0; i < num_fits*3*MAX_NOF_PATHS; i++){
       output_parameters.push_back(0);
     }
 
+    cout << "test4";
     test_gpufit(initial_parameters, initial_data, output_parameters); //test gpufit
-
 
 
     cout << "NOF_PATHS: " << mp_config.nof_paths <<  "\n";

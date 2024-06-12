@@ -386,7 +386,7 @@ int main(int argc, char *argv[]) {
     }
     // ==================AFTER for loop=====================
     cout << "==================AFTER for loop=====================" << '\n';
-
+    cout << "test-1";
     cout << "==================GPUFIT testing=====================" << '\n';
     int num_fits; 
     cout << "test0";

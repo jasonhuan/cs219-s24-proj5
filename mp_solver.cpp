@@ -199,7 +199,7 @@ int mp_solver(mp_config_t *mp_config, mp_profile_t *mp_profile)
   return 0;
 }
 
-void test_gpufit(std::vector<float> _initial_parameters, std::vector<float> _initial_data, std::vector<float> _output_parameters)
+void test_gpufit(std::vector<float>* _initial_parameters, std::vector<float>* _initial_data, std::vector<float>* _output_parameters)
 {
 	/*
 		This example demonstrates a simple, minimal program containing all 
@@ -391,7 +391,7 @@ int main(int argc, char *argv[]) {
     std::vector<float> initial_data[num_fits*MAX_NOF_PILOTS];
     std::vector<float> output_parameters[num_fits*3*MAX_NOF_PATHS];
 
-    test_gpufit(&initial_parameters, &initial_data, &output_parameters); //test gpufit
+    test_gpufit(initial_parameters, initial_data, output_parameters); //test gpufit
 
 
 

@@ -309,8 +309,6 @@ int main(int argc, char *argv[]) {
     } 
     cout << "num_threads: " << num_threads << std::endl;
 
-    test_gpufit(); //test gpufit
-
 
     auto start = std::chrono::high_resolution_clock::now();
     std::ifstream file("sample_input.csv");
@@ -387,12 +385,12 @@ int main(int argc, char *argv[]) {
     }
     // ==================AFTER for loop=====================
     cout << "==================AFTER for loop=====================" << '\n';
-    simple_example(); //test gpufit
+    test_gpufit(); //test gpufit
     cout << "NOF_PATHS: " << mp_config.nof_paths <<  "\n";
     cout << "NOF_PILOTS: " << mp_config.nof_pilots <<  "\n";
     std::cout << "main completed" << std::endl;
 
-
+  /*
   int num_iterations = 2000;
   if (!multithread) {
     
@@ -421,6 +419,6 @@ int main(int argc, char *argv[]) {
   auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
   cout << "Elapsed time: " << duration.count() << " us\n";
   cout << "=================done calling mp_solver() and timing=================" << "\n";
-
+  */
 }
 

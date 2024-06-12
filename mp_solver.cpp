@@ -391,7 +391,7 @@ int main(int argc, char *argv[]) {
     std::vector<float> initial_data[num_fits*MAX_NOF_PILOTS];
     std::vector<float> output_parameters[num_fits*3*MAX_NOF_PATHS];
 
-    test_gpufit(initial_parameters, initial_data, output_parameters); //test gpufit
+    test_gpufit(&initial_parameters, &initial_data, &output_parameters); //test gpufit
 
 
 

@@ -199,7 +199,7 @@ int mp_solver(mp_config_t *mp_config, mp_profile_t *mp_profile)
   return 0;
 }
 
-void simple_example()
+void test_gpufit()
 {
 	/*
 		This example demonstrates a simple, minimal program containing all 
@@ -221,24 +221,24 @@ void simple_example()
     /*************** definition of input and output parameters  ***************/
 
 	// number of fits, number of points per fit
-	std::size_t const n_fits = 10;
+	std::size_t const n_fits = 10; // default values
 	std::size_t const n_points_per_fit = 10;
 
 	// model ID and number of model parameters
 	int const model_id = GAUSS_1D;
-	std::size_t const n_model_parameters = 4;
+	std::size_t const n_model_parameters = 3*3; //hardcoded as 4*mp_config->nof_paths
 
 	// initial parameters
-	std::vector< REAL > initial_parameters(n_fits * n_model_parameters);
+	std::vector< REAL > initial_parameters(n_fits * n_model_parameters); //replace: initial paths (data struct placeholder)
 
 	// data
-	std::vector< REAL > data(n_points_per_fit * n_fits);
+	std::vector< REAL > data(n_points_per_fit * n_fits); //replace: .csv input values
 
 	// tolerance
 	REAL const tolerance = 0.001f;
 
 	// maximum number of iterations
-	int const max_number_iterations = 10;
+	int const max_number_iterations = 100; // same from previous (GSL jacobian curve fitting)
 
 	// estimator ID
 	int const estimator_id = LSE;
@@ -247,7 +247,7 @@ void simple_example()
 	std::vector< int > parameters_to_fit(n_model_parameters, 1);
 
 	// output parameters
-	std::vector< REAL > output_parameters(n_fits * n_model_parameters);
+	std::vector< REAL > output_parameters(n_fits * n_model_parameters); //replace: output _Complex variable array
 	std::vector< int > output_states(n_fits);
 	std::vector< REAL > output_chi_square(n_fits);
 	std::vector< int > output_number_iterations(n_fits);
@@ -280,7 +280,7 @@ void simple_example()
 	{
 		throw std::runtime_error(gpufit_get_last_error());
 	} else {
-		std::cout << "working gpufit status check\n";
+		std::cout << "working gpufit_test()\n";
 	}
 }
 
@@ -309,7 +309,7 @@ int main(int argc, char *argv[]) {
     } 
     cout << "num_threads: " << num_threads << std::endl;
 
-    // simple_example(); //test gpufit
+    test_gpufit(); //test gpufit
 
 
     auto start = std::chrono::high_resolution_clock::now();

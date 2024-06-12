@@ -230,10 +230,10 @@ void test_gpufit(std::vector<float> _initial_parameters, std::vector<float> _ini
 	std::size_t const n_model_parameters = 3*3; //hardcoded as 4*mp_config->nof_paths
 
 	// initial parameters
-	std::vector< REAL > initial_parameters(*_initial_parameters); //replace: initial paths (data struct placeholder): n_fits * n_model_parameters
+	std::vector< float > initial_parameters(*_initial_parameters); //replace: initial paths (data struct placeholder): n_fits * n_model_parameters
 
 	// data
-	std::vector< REAL > data(*_initial_data); //replace: .csv input values: n_points_per_fit * n_fits
+	std::vector< float > data(*_initial_data); //replace: .csv input values: n_points_per_fit * n_fits
 
 	// tolerance
 	REAL const tolerance = 0.001f;
@@ -248,9 +248,9 @@ void test_gpufit(std::vector<float> _initial_parameters, std::vector<float> _ini
 	std::vector< int > parameters_to_fit(n_model_parameters, 1);
 
 	// output parameters
-	std::vector< REAL > output_parameters(*_output_parameters); //replace: output _Complex variable array: n_fits * n_model_parameters
+	std::vector< float > output_parameters(*_output_parameters); //replace: output _Complex variable array: n_fits * n_model_parameters
 	std::vector< int > output_states(n_fits);
-	std::vector< REAL > output_chi_square(n_fits);
+	std::vector< float > output_chi_square(n_fits);
 	std::vector< int > output_number_iterations(n_fits);
 
     /***************************** call to gpufit  ****************************/
